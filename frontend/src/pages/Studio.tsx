@@ -1,0 +1,523 @@
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Sparkles, ArrowRight, Loader2, ChevronLeft,
+  Instagram, Linkedin, Facebook, Video, FileText, Image, Layers
+} from 'lucide-react'
+import toast from 'react-hot-toast'
+import { useStudioStore } from '../store/studioStore'
+import { useCreditsStore } from '../store/creditsStore'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
+import { CampaignCard } from '../components/creative/CampaignCard'
+import { PostPreview } from '../components/creative/PostPreview'
+import { ImageCanvas } from '../components/creative/ImageCanvas'
+import { VideoStoryboard } from '../components/creative/VideoStoryboard'
+import api from '../lib/api'
+import type { Platform, Tone, Objective, ContentFormat, Campaign } from '../types'
+
+const PLATFORMS: { id: Platform; label: string; icon: React.ReactNode }[] = [
+  { id: 'instagram', label: 'Instagram', icon: <Instagram size={16} /> },
+  { id: 'tiktok', label: 'TikTok', icon: <Video size={16} /> },
+  { id: 'linkedin', label: 'LinkedIn', icon: <Linkedin size={16} /> },
+  { id: 'facebook', label: 'Facebook', icon: <Facebook size={16} /> },
+]
+
+const TONES: Tone[] = ['premium', 'emocional', 'corporativo', 'agresivo', 'divertido', 'juvenil', 'elegante', 'cercano']
+const OBJECTIVES: { id: Objective; label: string }[] = [
+  { id: 'ventas', label: '💰 Ventas' },
+  { id: 'trafico', label: '🚀 Tráfico' },
+  { id: 'marca', label: '✨ Marca' },
+  { id: 'leads', label: '📋 Leads' },
+  { id: 'engagement', label: '❤️ Engagement' },
+]
+
+const FORMATS: { id: ContentFormat; label: string; icon: React.ReactNode; credits: number }[] = [
+  { id: 'post', label: 'Post', icon: <FileText size={15} />, credits: 2 },
+  { id: 'carrusel', label: 'Carrusel', icon: <Layers size={15} />, credits: 3 },
+  { id: 'story', label: 'Story', icon: <Instagram size={15} />, credits: 2 },
+  { id: 'reel', label: 'Reel', icon: <Video size={15} />, credits: 2 },
+]
+
+export function Studio() {
+  const store = useStudioStore()
+  const { refresh } = useCreditsStore()
+  const [videoAnswers, setVideoAnswers] = useState<Record<string, string>>({})
+  const [videoQuestions, setVideoQuestions] = useState<Array<{ id: string; question: string; options?: string[] }>>([])
+
+  async function handleAnalyze() {
+    if (!store.businessDescription.trim()) {
+      toast.error('Describe tu negocio primero')
+      return
+    }
+    store.setLoading(true, 'Analizando tu negocio...')
+    try {
+      const { data } = await api.post('/generate/analyze', { description: store.businessDescription })
+      store.setAnalysis(data.analysis)
+      store.setStep('campaigns')
+      toast.success('Análisis completado')
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      store.setLoading(false)
+    }
+  }
+
+  async function handleGenerateCampaigns() {
+    store.setLoading(true, 'Generando 10 ideas de campaña...')
+    try {
+      const { data } = await api.post('/generate/campaigns', {
+        analysis: store.analysis,
+        objective: store.selectedObjective,
+        platforms: [store.selectedPlatform],
+        tone: store.selectedTone,
+      })
+      store.setCampaigns(data.campaigns)
+      store.setCampaignId(data.campaign_id)
+      await refresh()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      store.setLoading(false)
+    }
+  }
+
+  async function handleGeneratePost() {
+    if (!store.selectedCampaign) return
+    store.setLoading(true, 'Escribiendo el copy perfecto...')
+    try {
+      const { data } = await api.post('/generate/post', {
+        campaign: store.selectedCampaign,
+        platform: store.selectedPlatform,
+        format: store.selectedFormat,
+        tone: store.selectedTone,
+        campaign_id: store.campaignId,
+      })
+      store.setPostContent(data.content)
+      store.setContentId(data.content_id)
+      store.setStep('image')
+      await refresh()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      store.setLoading(false)
+    }
+  }
+
+  async function handleGenerateImagePrompt() {
+    if (!store.postContent) return
+    store.setLoading(true, 'Construyendo prompt visual premium...')
+    try {
+      const { data } = await api.post('/generate/images/prompt', {
+        campaign: store.selectedCampaign,
+        headline: store.postContent.headline,
+        subheadline: store.postContent.subheadline,
+        cta: store.postContent.cta,
+        platform: store.selectedPlatform,
+        format: store.selectedFormat,
+        tone: store.selectedTone,
+      })
+      store.setImageData(data.image_data)
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      store.setLoading(false)
+    }
+  }
+
+  async function handleGenerateImage() {
+    if (!store.imageData) return
+    store.setLoading(true, 'Generando imagen tipo agencia...')
+    try {
+      const { data } = await api.post('/generate/images/generate', {
+        image_prompt: store.imageData.image_prompt,
+        dimensions: store.imageData.dimensions,
+        campaign_id: store.campaignId,
+        content_id: store.contentId,
+      })
+      store.setGeneratedImageUrl(data.image_url)
+      await refresh()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      store.setLoading(false)
+    }
+  }
+
+  async function handleVideoQuestions() {
+    store.setLoading(true, 'Preparando preguntas de video...')
+    try {
+      const { data } = await api.post('/generate/videos/questions', { campaign: store.selectedCampaign })
+      setVideoQuestions(data.questions ?? [])
+      store.setStep('video')
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      store.setLoading(false)
+    }
+  }
+
+  async function handleGenerateVideoScript() {
+    store.setLoading(true, 'Escribiendo el guion viral...')
+    try {
+      const { data } = await api.post('/generate/videos/script', {
+        campaign: store.selectedCampaign,
+        video_type: videoAnswers.video_type ?? 'Persona hablando a cámara',
+        duration: videoAnswers.duration ?? '30 segundos',
+        style: videoAnswers.style ?? 'Dinámico y rápido',
+        platform: store.selectedPlatform,
+        campaign_id: store.campaignId,
+      })
+      store.setVideoScript(data.script)
+      await refresh()
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      store.setLoading(false)
+    }
+  }
+
+  const stepBack: Record<string, () => void> = {
+    campaigns: () => store.setStep('brief'),
+    content: () => store.setStep('campaigns'),
+    image: () => store.setStep('content'),
+    video: () => store.setStep('content'),
+  }
+
+  return (
+    <div className="min-h-screen p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center gap-3 mb-8">
+          {stepBack[store.step] && (
+            <button onClick={stepBack[store.step]} className="text-text-muted hover:text-text-main transition-colors">
+              <ChevronLeft size={20} />
+            </button>
+          )}
+          <div>
+            <h1 className="text-xl font-bold text-text-main">Studio</h1>
+            <p className="text-xs text-text-muted">Agencia de IA · Director Creativo</p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            {['brief', 'campaigns', 'content', 'image'].map((s, i) => (
+              <div key={s} className={`w-2 h-2 rounded-full transition-all ${store.step === s ? 'bg-primary scale-125' : 'bg-border'}`} />
+            ))}
+          </div>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {/* ─── PASO 1: BRIEF ─── */}
+          {store.step === 'brief' && (
+            <motion.div key="brief" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              className="grid grid-cols-5 gap-6">
+              <div className="col-span-3 space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-text-main mb-1">¿Qué estás promocionando?</h2>
+                  <p className="text-sm text-text-muted">Describe tu negocio, producto o servicio. Cuanto más detalle, mejor el resultado.</p>
+                </div>
+                <textarea
+                  value={store.businessDescription}
+                  onChange={(e) => store.setBusinessDescription(e.target.value)}
+                  placeholder="Ejemplo: CVJob es una plataforma que ayuda a personas a optimizar su CV para superar filtros de IA y ATS. Nuestro cliente es alguien que lleva semanas enviando CVs sin respuesta..."
+                  className="w-full h-48 bg-surface border border-border rounded-2xl p-5 text-sm text-text-main placeholder-text-muted resize-none focus:outline-none focus:border-primary transition-colors"
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-text-muted mb-2 font-medium">Objetivo principal</p>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {OBJECTIVES.map(({ id, label }) => (
+                        <button key={id} onClick={() => store.setObjective(id)}
+                          className={`text-left px-3 py-2 rounded-lg text-sm transition-all ${store.selectedObjective === id ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-surface border border-border text-text-muted hover:border-primary/30'}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-text-muted mb-2 font-medium">Plataforma</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {PLATFORMS.map(({ id, label, icon }) => (
+                          <button key={id} onClick={() => store.setPlatform(id)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${store.selectedPlatform === id ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-surface border border-border text-text-muted hover:border-primary/30'}`}>
+                            {icon} {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-text-muted mb-2 font-medium">Tono de comunicación</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {TONES.map((tone) => (
+                          <button key={tone} onClick={() => store.setTone(tone as Tone)}
+                            className={`px-2.5 py-1 rounded-lg text-xs capitalize transition-all ${store.selectedTone === tone ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-surface border border-border text-text-muted hover:border-primary/30'}`}>
+                            {tone}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Button onClick={handleAnalyze} loading={store.isLoading} size="lg" className="w-full" icon={<Sparkles size={18} />}>
+                  {store.isLoading ? store.loadingMessage : 'Analizar y generar ideas'}
+                </Button>
+              </div>
+
+              <div className="col-span-2">
+                <Card className="sticky top-8">
+                  <h3 className="font-semibold text-text-main text-sm mb-4">Lo que hará la IA</h3>
+                  <div className="space-y-3">
+                    {[
+                      { icon: '🧠', title: 'Análisis profundo', desc: 'Detecta propuesta de valor, dolores del cliente y diferenciadores' },
+                      { icon: '💡', title: '10 ideas de campaña', desc: 'Conceptos únicos con hooks, ángulos y potencial viral' },
+                      { icon: '✍️', title: 'Copy completo', desc: 'Headline, caption, CTA y hashtags listos para publicar' },
+                      { icon: '🎨', title: 'Imagen premium', desc: 'Creatividad visual estilo agencia de nivel internacional' },
+                    ].map(({ icon, title, desc }) => (
+                      <div key={title} className="flex gap-3">
+                        <span className="text-lg">{icon}</span>
+                        <div>
+                          <p className="text-xs font-semibold text-text-main">{title}</p>
+                          <p className="text-xs text-text-muted">{desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ─── PASO 2: CAMPAÑAS ─── */}
+          {store.step === 'campaigns' && (
+            <motion.div key="campaigns" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              {store.analysis && !store.campaigns.length && (
+                <div className="max-w-2xl mx-auto">
+                  <div className="mb-6 p-5 bg-surface border border-border rounded-2xl">
+                    <h3 className="font-semibold text-text-main mb-3 flex items-center gap-2">
+                      <Sparkles size={16} className="text-primary" /> Análisis completado
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs text-text-muted mb-1">Propuesta de valor</p>
+                        <p className="text-text-main">{store.analysis.value_proposition}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-text-muted mb-1">Insight clave</p>
+                        <p className="text-text-main italic">"{store.analysis.quick_insight}"</p>
+                      </div>
+                    </div>
+                    {store.analysis.pain_points?.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs text-text-muted mb-1.5">Dolores del cliente detectados</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {store.analysis.pain_points.map((p) => (
+                            <span key={p} className="text-xs px-2 py-0.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full">{p}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button onClick={handleGenerateCampaigns} loading={store.isLoading} size="lg" className="w-full" icon={<Sparkles size={18} />}>
+                    {store.isLoading ? store.loadingMessage : 'Generar 10 ideas de campaña (1 crédito)'}
+                  </Button>
+                </div>
+              )}
+
+              {store.campaigns.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-lg font-semibold text-text-main">Elige tu campaña</h2>
+                      <p className="text-sm text-text-muted">El director creativo generó 10 conceptos únicos</p>
+                    </div>
+                    {store.selectedCampaign && (
+                      <Button onClick={() => store.setStep('content')} icon={<ArrowRight size={16} />}>
+                        Crear contenido
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {store.campaigns.map((campaign, i) => (
+                      <CampaignCard
+                        key={campaign.id}
+                        campaign={campaign}
+                        index={i}
+                        selected={store.selectedCampaign?.id === campaign.id}
+                        onSelect={(c: Campaign) => store.setSelectedCampaign(c)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ─── PASO 3: CONTENIDO ─── */}
+          {store.step === 'content' && (
+            <motion.div key="content" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              className="grid grid-cols-5 gap-6">
+              <div className="col-span-2 space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-text-main mb-1">Crear contenido</h2>
+                  <p className="text-sm text-text-muted">Selecciona el formato y genera el copy</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-text-muted mb-2 font-medium">Formato</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {FORMATS.map(({ id, label, icon, credits }) => (
+                      <button key={id} onClick={() => store.setFormat(id)}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs transition-all border ${store.selectedFormat === id ? 'bg-primary/15 text-primary border-primary/30' : 'bg-surface border-border text-text-muted hover:border-primary/30'}`}>
+                        {icon}
+                        <span className="font-medium">{label}</span>
+                        <span className="text-[10px] opacity-60">{credits} crd</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-surface border border-border rounded-xl">
+                  <p className="text-xs font-semibold text-text-main mb-2">Campaña seleccionada</p>
+                  <p className="text-sm font-medium text-primary">{store.selectedCampaign?.title}</p>
+                  <p className="text-xs text-text-muted mt-1">{store.selectedCampaign?.concept}</p>
+                </div>
+
+                <Button onClick={handleGeneratePost} loading={store.isLoading} size="lg" className="w-full" icon={<FileText size={16} />}>
+                  {store.isLoading ? store.loadingMessage : `Generar ${store.selectedFormat}`}
+                </Button>
+
+                <button onClick={handleVideoQuestions} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-muted hover:border-primary/30 hover:text-text-main transition-all">
+                  <Video size={15} />
+                  Crear video en su lugar
+                </button>
+              </div>
+
+              <div className="col-span-3">
+                {store.isLoading ? (
+                  <div className="flex flex-col items-center justify-center h-64 gap-3">
+                    <Loader2 size={32} className="text-primary animate-spin" />
+                    <p className="text-sm text-text-muted">{store.loadingMessage}</p>
+                  </div>
+                ) : store.postContent ? (
+                  <PostPreview content={store.postContent} platform={store.selectedPlatform} />
+                ) : (
+                  <div className="h-64 flex items-center justify-center">
+                    <p className="text-sm text-text-muted">El contenido aparecerá aquí</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ─── PASO 4: IMAGEN ─── */}
+          {store.step === 'image' && (
+            <motion.div key="image" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              className="grid grid-cols-5 gap-6">
+              <div className="col-span-2 space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-text-main mb-1">Imagen premium</h2>
+                  <p className="text-sm text-text-muted">La IA construirá el prompt visual y generará la imagen</p>
+                </div>
+
+                {!store.imageData ? (
+                  <Button onClick={handleGenerateImagePrompt} loading={store.isLoading} size="lg" className="w-full" icon={<Image size={16} />}>
+                    {store.isLoading ? store.loadingMessage : 'Preparar prompt visual'}
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="p-4 bg-surface border border-border rounded-xl">
+                      <p className="text-xs text-text-muted mb-2">Estilo detectado</p>
+                      <p className="text-sm text-text-main">{store.imageData.style}</p>
+                    </div>
+                    {store.imageData.color_palette?.length > 0 && (
+                      <div className="flex gap-2">
+                        {store.imageData.color_palette.map((color) => (
+                          <div key={color} className="w-8 h-8 rounded-lg border border-border" style={{ backgroundColor: color }} title={color} />
+                        ))}
+                      </div>
+                    )}
+                    {!store.generatedImageUrl && (
+                      <Button onClick={handleGenerateImage} loading={store.isLoading} size="lg" className="w-full" icon={<Sparkles size={16} />}>
+                        {store.isLoading ? store.loadingMessage : 'Generar imagen (5 créditos)'}
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {store.postContent && (
+                  <div className="p-4 bg-surface border border-border rounded-xl text-xs space-y-2">
+                    <p className="font-semibold text-text-main">Textos del anuncio</p>
+                    <p className="text-text-muted"><span className="text-text-main">Titular:</span> {store.postContent.headline}</p>
+                    <p className="text-text-muted"><span className="text-text-main">CTA:</span> {store.postContent.cta}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="col-span-3">
+                <ImageCanvas
+                  imageData={store.imageData}
+                  imageUrl={store.generatedImageUrl}
+                  onGenerate={handleGenerateImage}
+                  onRegenerate={handleGenerateImage}
+                  isLoading={store.isLoading && store.loadingMessage.includes('imagen')}
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ─── PASO 5: VIDEO ─── */}
+          {store.step === 'video' && (
+            <motion.div key="video" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              className="grid grid-cols-5 gap-6">
+              <div className="col-span-2 space-y-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-text-main mb-1">Guion de video</h2>
+                  <p className="text-sm text-text-muted">Configura el video antes de generar el guion</p>
+                </div>
+
+                <div className="space-y-4">
+                  {videoQuestions.map((q) => (
+                    <div key={q.id}>
+                      <p className="text-xs text-text-muted mb-2 font-medium">{q.question}</p>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {q.options?.map((opt) => (
+                          <button key={opt} onClick={() => setVideoAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                            className={`text-left px-3 py-2 rounded-lg text-xs transition-all border ${videoAnswers[q.id] === opt ? 'bg-primary/15 text-primary border-primary/30' : 'bg-surface border-border text-text-muted hover:border-primary/30'}`}>
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <Button onClick={handleGenerateVideoScript} loading={store.isLoading} size="lg" className="w-full" icon={<Video size={16} />}>
+                  {store.isLoading ? store.loadingMessage : 'Generar guion (3 créditos)'}
+                </Button>
+              </div>
+
+              <div className="col-span-3">
+                {store.isLoading ? (
+                  <div className="flex flex-col items-center justify-center h-64 gap-3">
+                    <Loader2 size={32} className="text-primary animate-spin" />
+                    <p className="text-sm text-text-muted">{store.loadingMessage}</p>
+                  </div>
+                ) : store.videoScript ? (
+                  <VideoStoryboard script={store.videoScript} />
+                ) : (
+                  <div className="h-64 flex items-center justify-center">
+                    <p className="text-sm text-text-muted">El guion aparecerá aquí</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  )
+}
