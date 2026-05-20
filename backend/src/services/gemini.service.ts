@@ -3,7 +3,8 @@ import fs from 'fs'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
-const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest']
+// gemini-2.0-flash-lite removido: quota 0 en free tier
+const MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']
 
 function buildModel(modelName: string, maxTokens: number) {
   return genAI.getGenerativeModel({
@@ -36,9 +37,12 @@ export async function geminiCompletion(
     } catch (err) {
       lastError = err as Error
       const msg = lastError.message
-      if (msg.includes('503') || msg.includes('overloaded') || msg.includes('high demand')) {
-        console.warn(`[gemini] ${modelName} overloaded, trying next...`)
-        await new Promise(r => setTimeout(r, 1500))
+      const isRetriable = msg.includes('503') || msg.includes('overloaded') ||
+        msg.includes('high demand') || msg.includes('429') || msg.includes('quota') ||
+        msg.includes('Too Many Requests') || msg.includes('RESOURCE_EXHAUSTED')
+      if (isRetriable) {
+        console.warn(`[gemini] ${modelName} quota/overload, trying next...`)
+        await new Promise(r => setTimeout(r, 2000))
         continue
       }
       throw err

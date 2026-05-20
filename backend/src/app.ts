@@ -24,8 +24,8 @@ app.use(cors({
 }))
 app.use(express.json({ limit: '10mb' }))
 
-const limiter = rateLimit({ windowMs: 60_000, max: 60 })
-const aiLimiter = rateLimit({ windowMs: 60_000, max: 20 })
+const limiter = rateLimit({ windowMs: 60_000, max: 200 })
+const aiLimiter = rateLimit({ windowMs: 60_000, max: 60 })
 app.use('/api', limiter)
 app.use('/api/v1/generate', aiLimiter)
 

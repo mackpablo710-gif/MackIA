@@ -48,6 +48,7 @@ export function Studio() {
   const [videoQuestions, setVideoQuestions] = useState<Array<{ id: string; question: string; options?: string[] }>>([])
   const [editableTexts, setEditableTexts] = useState({ headline: '', subheadline: '', cta: '' })
   const [editingTexts, setEditingTexts] = useState(false)
+  const [videoError, setVideoError] = useState<string | null>(null)
 
   useEffect(() => {
     const brandId = searchParams.get('brandId')
@@ -192,20 +193,28 @@ export function Studio() {
   }
 
   async function handleGenerateVideoScript() {
+    setVideoError(null)
     store.setLoading(true, 'Escribiendo el guion viral...')
     try {
-      const { data } = await api.post('/generate/videos/script', {
+      const payload = {
         campaign: store.selectedCampaign,
         video_type: videoAnswers.video_type ?? 'Persona hablando a cámara',
         duration: videoAnswers.duration ?? '30 segundos',
         style: videoAnswers.style ?? 'Dinámico y rápido',
         platform: store.selectedPlatform,
         campaign_id: store.campaignId,
-      })
+      }
+      console.log('[video] sending payload:', JSON.stringify(payload).slice(0, 200))
+      const { data } = await api.post('/generate/videos/script', payload)
+      console.log('[video] response:', JSON.stringify(data).slice(0, 200))
+      if (!data.script) throw new Error('La IA no devolvió un guion válido')
       store.setVideoScript(data.script)
       await refresh()
     } catch (err: unknown) {
-      toast.error((err as Error).message)
+      const msg = (err as Error).message
+      setVideoError(msg)
+      toast.error(msg)
+      console.error('[video] error:', msg)
     } finally {
       store.setLoading(false)
     }
@@ -581,6 +590,13 @@ export function Studio() {
                 <Button onClick={handleGenerateVideoScript} loading={store.isLoading} size="lg" className="w-full" icon={<Video size={16} />}>
                   {store.isLoading ? store.loadingMessage : 'Generar guion (3 créditos)'}
                 </Button>
+
+                {videoError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+                    <p className="text-xs font-semibold text-red-400 mb-1">Error al generar</p>
+                    <p className="text-xs text-red-300">{videoError}</p>
+                  </div>
+                )}
               </div>
 
               <div className="col-span-3">
