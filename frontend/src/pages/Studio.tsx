@@ -170,16 +170,25 @@ export function Studio() {
   }
 
   async function handleVideoQuestions() {
-    store.setLoading(true, 'Preparando preguntas de video...')
-    try {
-      const { data } = await api.post('/generate/videos/questions', { campaign: store.selectedCampaign })
-      setVideoQuestions(data.questions ?? [])
-      store.setStep('video')
-    } catch (err: unknown) {
-      toast.error((err as Error).message)
-    } finally {
-      store.setLoading(false)
-    }
+    // Preguntas hardcodeadas — eliminamos llamada extra a Gemini
+    setVideoQuestions([
+      {
+        id: 'video_type',
+        question: '¿Qué tipo de video quieres crear?',
+        options: ['Persona hablando a cámara', 'Video de producto', 'UGC (User Generated Content)', 'Animado / Motion Graphics', 'Narrado con imágenes', 'TikTok viral', 'Corporativo / Presentación'],
+      },
+      {
+        id: 'duration',
+        question: '¿Cuánto durará el video?',
+        options: ['15 segundos', '30 segundos', '45 segundos', '60 segundos'],
+      },
+      {
+        id: 'style',
+        question: '¿Cuál es el estilo visual?',
+        options: ['Dinámico y rápido', 'Emocional y lento', 'Educativo / Explicativo', 'Divertido y casual', 'Premium y elegante'],
+      },
+    ])
+    store.setStep('video')
   }
 
   async function handleGenerateVideoScript() {
