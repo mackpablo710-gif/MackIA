@@ -66,10 +66,20 @@ export interface BusinessAnalysis {
   quick_insight: string
 }
 
+export interface CampaignVisualConcept {
+  scene?: string
+  visual_hook?: string
+  text_on_image?: string
+  cta_visual?: string
+  emotion_conveyed?: string
+  composition?: string
+}
+
 export interface Campaign {
   id: number
   title: string
   concept: string
+  archetype?: string
   angle: string
   hook: string
   headline: string
@@ -80,6 +90,7 @@ export interface Campaign {
   best_format: string
   emotion: string
   weakness: string
+  visual_concept?: CampaignVisualConcept
 }
 
 export interface PostContent {
@@ -120,6 +131,8 @@ export interface ImageData {
   style: string
   color_palette: string[]
   dimensions: string
+  pixels?: string
+  composition_notes?: string
   text_overlay: {
     main_text: string
     secondary_text: string

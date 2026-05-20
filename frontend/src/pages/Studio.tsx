@@ -50,6 +50,7 @@ export function Studio() {
   const [editableTexts, setEditableTexts] = useState({ headline: '', subheadline: '', cta: '' })
   const [editingTexts, setEditingTexts] = useState(false)
   const [videoError, setVideoError] = useState<string | null>(null)
+  const [visualStyle, setVisualStyle] = useState<string>('moderno')
 
   useEffect(() => {
     const brandId = searchParams.get('brandId')
@@ -165,14 +166,16 @@ export function Studio() {
     if (!store.postContent) return
     store.setLoading(true, 'Construyendo prompt visual premium...')
     try {
+      const activeContent = store.postContent ?? (store.carouselContent?.slides?.length ? { headline: editableTexts.headline, subheadline: editableTexts.subheadline, cta: editableTexts.cta } : null)
       const { data } = await api.post('/generate/images/prompt', {
         campaign: store.selectedCampaign,
-        headline: editableTexts.headline || store.postContent.headline,
-        subheadline: editableTexts.subheadline || store.postContent.subheadline,
-        cta: editableTexts.cta || store.postContent.cta,
+        headline: editableTexts.headline || activeContent?.headline || '',
+        subheadline: editableTexts.subheadline || activeContent?.subheadline || '',
+        cta: editableTexts.cta || activeContent?.cta || '',
         platform: store.selectedPlatform,
         format: store.selectedFormat,
         tone: store.selectedTone,
+        visualStyle,
         brandIdentity: store.brandIdentity ?? undefined,
         logoUrl: store.brandLogoUrl ?? undefined,
       })
@@ -580,9 +583,34 @@ export function Studio() {
                   </div>
                 )}
 
+                {/* Estilo visual */}
+                <div className="p-4 bg-surface border border-border rounded-xl space-y-2">
+                  <p className="text-xs font-semibold text-text-main">Estilo visual</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'corporativo', emoji: '🏢' },
+                      { id: 'startup', emoji: '🚀' },
+                      { id: 'lujo', emoji: '💎' },
+                      { id: 'minimalista', emoji: '⬜' },
+                      { id: 'agresivo', emoji: '⚡' },
+                      { id: 'emocional', emoji: '❤️' },
+                      { id: 'moderno', emoji: '✨' },
+                      { id: 'tecnológico', emoji: '🤖' },
+                      { id: 'tiktok_viral', emoji: '🎵' },
+                      { id: 'elegante', emoji: '🎩' },
+                      { id: 'premium', emoji: '👑' },
+                    ].map(({ id, emoji }) => (
+                      <button key={id} onClick={() => setVisualStyle(id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs capitalize transition-all ${visualStyle === id ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-bg border border-border text-text-muted hover:border-primary/30'}`}>
+                        {emoji} {id.replace('_', ' ')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {!store.imageData ? (
                   <Button onClick={handleGenerateImagePrompt} loading={store.isLoading} size="lg" className="w-full" icon={<Image size={16} />}>
-                    {store.isLoading ? store.loadingMessage : 'Preparar prompt visual'}
+                    {store.isLoading ? store.loadingMessage : 'Preparar concepto visual'}
                   </Button>
                 ) : (
                   <div className="space-y-3">
@@ -603,9 +631,9 @@ export function Studio() {
                       </Button>
                     )}
                     {store.generatedImageUrl && (
-                      <Button onClick={() => { store.setImageData(store.imageData!); handleGenerateImagePrompt() }}
+                      <Button onClick={handleGenerateImagePrompt}
                         variant="secondary" size="sm" className="w-full" icon={<Sparkles size={14} />}>
-                        Regenerar con nuevos textos
+                        Regenerar concepto
                       </Button>
                     )}
                   </div>

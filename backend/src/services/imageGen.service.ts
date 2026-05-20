@@ -3,11 +3,32 @@ import http from 'http'
 
 const MAX_RETRIES = 3
 
-export async function generateImageBuffer(prompt: string, dimensions: string = '1:1'): Promise<Buffer> {
-  const width  = dimensions === '9:16' ? 768  : dimensions === '16:9' ? 1280 : 1024
-  const height = dimensions === '9:16' ? 1280 : dimensions === '16:9' ? 768  : 1024
+// Map ratio or pixel dimensions to actual pixel values
+function parseDimensions(dimensions: string): { width: number; height: number } {
+  // Format "1080x1920" — direct pixel spec
+  if (dimensions.includes('x')) {
+    const parts = dimensions.split('x')
+    const w = parseInt(parts[0]) || 1024
+    const h = parseInt(parts[1]) || 1024
+    // Scale down if > 1024 (Pollinations limit)
+    const scale = Math.min(1, 1024 / Math.max(w, h))
+    return { width: Math.round(w * scale), height: Math.round(h * scale) }
+  }
+  // Ratio format
+  switch (dimensions) {
+    case '9:16':   return { width: 576, height: 1024 }
+    case '4:5':    return { width: 820, height: 1024 }
+    case '1.91:1': return { width: 1024, height: 536 }
+    case '16:9':   return { width: 1024, height: 576 }
+    case '1:1':    return { width: 1024, height: 1024 }
+    default:       return { width: 1024, height: 1024 }
+  }
+}
 
-  // Pollinations con modelo FLUX — prompt máx 300 chars para evitar socket hang up
+export async function generateImageBuffer(prompt: string, dimensions: string = '1:1'): Promise<Buffer> {
+  const { width, height } = parseDimensions(dimensions)
+
+  // Pollinations with FLUX model — keep prompt under 300 chars to avoid socket hang up
   const shortPrompt = prompt.slice(0, 300)
   const encoded = encodeURIComponent(shortPrompt)
   const seed = Math.floor(Math.random() * 999999)
@@ -17,7 +38,7 @@ export async function generateImageBuffer(prompt: string, dimensions: string = '
   let lastError: Error | null = null
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`[image] attempt ${attempt}/${MAX_RETRIES} — ${width}x${height}`)
+      console.log(`[image] attempt ${attempt}/${MAX_RETRIES} — ${width}x${height} (${dimensions})`)
       const buf = await downloadWithTimeout(url, 90_000)
       console.log(`[image] downloaded OK — ${buf.length} bytes`)
       return buf
@@ -34,7 +55,7 @@ function downloadWithTimeout(url: string, timeoutMs: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http
     const req = client.get(url, { timeout: timeoutMs }, (res) => {
-      // Seguir redirecciones
+      // Follow redirects
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         downloadWithTimeout(res.headers.location, timeoutMs).then(resolve).catch(reject)
         return

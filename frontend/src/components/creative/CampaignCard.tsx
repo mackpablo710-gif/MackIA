@@ -10,17 +10,20 @@ interface CampaignCardProps {
   onSelect: (c: Campaign) => void
 }
 
+const archetypeEmoji: Record<string, string> = {
+  PROBLEMA: '😤', MIEDO: '😰', CURIOSIDAD: '🤔', COMPARACIÓN: '⚖️',
+  SOCIAL_PROOF: '⭐', ERROR: '❌', URGENCIA: '⏰', HISTORIA: '📖',
+}
+
 const angleColors: Record<string, string> = {
-  miedo: 'danger',
-  aspiración: 'primary',
-  curiosidad: 'warning',
-  social_proof: 'success',
-  humor: 'warning',
-  urgencia: 'danger',
-  identidad: 'primary',
+  miedo: 'danger', aspiración: 'primary', curiosidad: 'warning',
+  social_proof: 'success', humor: 'warning', urgencia: 'danger',
+  identidad: 'primary', dolor: 'danger',
 }
 
 export function CampaignCard({ campaign, index, selected, onSelect }: CampaignCardProps) {
+  const archEmoji = archetypeEmoji[campaign.archetype ?? ''] ?? '💡'
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -35,9 +38,14 @@ export function CampaignCard({ campaign, index, selected, onSelect }: CampaignCa
       `}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-text-muted w-5">{index + 1}</span>
-          <h3 className="font-semibold text-sm text-text-main">{campaign.title}</h3>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-lg flex-shrink-0">{archEmoji}</span>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-sm text-text-main truncate">{campaign.title}</h3>
+            {campaign.archetype && (
+              <p className="text-[10px] text-text-muted capitalize">{campaign.archetype.toLowerCase().replace('_', ' ')}</p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <Badge variant={(angleColors[campaign.angle] as 'primary' | 'success' | 'warning' | 'danger' | 'muted') ?? 'muted'}>
@@ -49,10 +57,22 @@ export function CampaignCard({ campaign, index, selected, onSelect }: CampaignCa
 
       <p className="text-sm text-text-muted mb-3 leading-relaxed">{campaign.concept}</p>
 
+      {/* Hook */}
       <div className="bg-bg/60 border border-border rounded-xl p-3 mb-3">
-        <p className="text-xs text-text-muted mb-1 font-medium">Hook</p>
+        <p className="text-xs text-text-muted mb-1 font-medium">🎯 Hook</p>
         <p className="text-sm text-text-main font-medium italic">"{campaign.hook}"</p>
       </div>
+
+      {/* Visual concept — only when available */}
+      {campaign.visual_concept?.scene && (
+        <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 mb-3">
+          <p className="text-xs text-primary mb-1 font-medium">🎨 Concepto visual</p>
+          <p className="text-xs text-text-muted leading-relaxed line-clamp-2">{campaign.visual_concept.scene}</p>
+          {campaign.visual_concept.text_on_image && (
+            <p className="text-xs text-text-main font-medium mt-1.5">"{campaign.visual_concept.text_on_image}"</p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <div className="flex items-start gap-1.5">
@@ -72,7 +92,7 @@ export function CampaignCard({ campaign, index, selected, onSelect }: CampaignCa
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
         <Badge variant="muted">{campaign.best_format}</Badge>
         <Badge variant="muted">{campaign.emotion}</Badge>
       </div>

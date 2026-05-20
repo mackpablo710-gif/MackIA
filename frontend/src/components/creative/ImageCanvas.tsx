@@ -223,11 +223,18 @@ export function ImageCanvas({ imageData, imageUrl, onGenerate, onRegenerate, isL
 
       {imageData && (
         <>
+          {imageData.composition_notes && (
+            <div className="p-3 bg-primary/5 border border-primary/15 rounded-xl">
+              <p className="text-[10px] text-primary uppercase tracking-wider mb-1 font-medium">Director de Arte</p>
+              <p className="text-xs text-text-muted leading-relaxed">{imageData.composition_notes}</p>
+            </div>
+          )}
           <button
             onClick={() => setShowPrompt(!showPrompt)}
             className="flex items-center gap-1 text-xs text-text-muted hover:text-text-main transition-colors w-full"
           >
             {showPrompt ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            {imageData.pixels && <span className="text-[10px] bg-surface border border-border px-1.5 py-0.5 rounded ml-auto">{imageData.pixels}</span>}
             Ver prompt generado
           </button>
           {showPrompt && (
