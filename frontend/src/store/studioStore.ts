@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { BusinessAnalysis, Campaign, PostContent, ImageData, VideoScript, StudioStep, ContentFormat, Platform, Tone, Objective } from '../types'
+import type { BusinessAnalysis, Brand, BrandIdentity, Campaign, PostContent, ImageData, VideoScript, StudioStep, ContentFormat, Platform, Tone, Objective } from '../types'
 
 interface StudioState {
   step: StudioStep
@@ -20,6 +20,9 @@ interface StudioState {
   contentId: string | null
   isLoading: boolean
   loadingMessage: string
+  activeBrand: Brand | null
+  brandIdentity: BrandIdentity | null
+  brandLogoUrl: string | null
 
   setStep: (step: StudioStep) => void
   setBusinessDescription: (desc: string) => void
@@ -38,6 +41,7 @@ interface StudioState {
   setVideoScript: (script: VideoScript) => void
   setContentId: (id: string) => void
   setLoading: (loading: boolean, message?: string) => void
+  setActiveBrand: (brand: Brand | null) => void
   reset: () => void
 }
 
@@ -60,6 +64,9 @@ const initialState = {
   contentId: null,
   isLoading: false,
   loadingMessage: '',
+  activeBrand: null,
+  brandIdentity: null,
+  brandLogoUrl: null,
 }
 
 export const useStudioStore = create<StudioState>((set) => ({
@@ -81,5 +88,11 @@ export const useStudioStore = create<StudioState>((set) => ({
   setVideoScript: (script) => set({ videoScript: script }),
   setContentId: (id) => set({ contentId: id }),
   setLoading: (loading, message = '') => set({ isLoading: loading, loadingMessage: message }),
+  setActiveBrand: (brand) => set({
+    activeBrand: brand,
+    brandIdentity: brand?.brand_identity ?? null,
+    brandLogoUrl: brand?.avatar_url ?? null,
+    businessDescription: brand?.description ?? '',
+  }),
   reset: () => set(initialState),
 }))

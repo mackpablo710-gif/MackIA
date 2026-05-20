@@ -1,32 +1,32 @@
 export function buildCampaignsPrompt(analysis: object, objective: string, platforms: string[], tone: string): string {
-  return `Eres un director creativo con 20 años de experiencia en campañas virales para startups y marcas globales. Has trabajado para Nike, Apple, Spotify y unicornios latinoamericanos.
+  return `Eres un director creativo senior con 20 años de experiencia en campañas virales para startups.
 
 ANÁLISIS DEL NEGOCIO:
 ${JSON.stringify(analysis, null, 2)}
 
-OBJETIVO DE LA CAMPAÑA: ${objective}
+OBJETIVO: ${objective}
 PLATAFORMAS: ${platforms.join(', ')}
 TONO: ${tone}
 
-Genera exactamente 10 ideas de campaña únicas, poderosas y diferenciadas. No ideas genéricas — ideas que un CMO de Notion o Figma aprobaría.
+Genera exactamente 10 ideas de campaña únicas. Sé conciso pero poderoso. NO incluyas textos de más de 2 oraciones por campo.
 
-Devuelve ÚNICAMENTE JSON válido:
+Devuelve ÚNICAMENTE este JSON válido y completo:
 {
   "campaigns": [
     {
       "id": 1,
-      "title": "nombre de la campaña",
-      "concept": "concepto central en 1 línea contundente",
-      "angle": "miedo | aspiración | curiosidad | social_proof | humor | urgencia | identidad",
-      "hook": "el hook principal — primeras palabras que detienen el scroll",
+      "title": "nombre corto de la campaña",
+      "concept": "concepto en 1 línea",
+      "angle": "miedo|aspiración|curiosidad|social_proof|humor|urgencia|identidad",
+      "hook": "primeras palabras que detienen el scroll (max 15 palabras)",
       "headline": "titular principal listo para usar",
       "subheadline": "subtítulo complementario",
-      "body_preview": "preview del copy (2-3 oraciones)",
-      "why_it_works": "explicación estratégica de por qué esta idea convierte",
-      "viral_potential": "por qué y cómo podría volverse viral",
-      "best_format": "reel | carrusel | story | post | tiktok | anuncio_pagado",
-      "emotion": "emoción principal que activa",
-      "weakness": "qué podría fallar y cómo mitigarlo"
+      "body_preview": "2 oraciones de copy",
+      "why_it_works": "razón estratégica en 1 oración",
+      "viral_potential": "por qué puede volverse viral en 1 oración",
+      "best_format": "reel|carrusel|story|post|tiktok|anuncio_pagado",
+      "emotion": "emoción principal",
+      "weakness": "riesgo principal en 1 oración"
     }
   ]
 }`

@@ -7,6 +7,30 @@ export interface User {
   credits: number
 }
 
+export interface BrandIdentity {
+  primary_colors?: string[]
+  secondary_colors?: string[]
+  style?: string
+  mood?: string
+  typography_style?: string
+  visual_elements?: string[]
+  brand_personality?: string
+  color_palette_description?: string
+  image_style_recommendation?: string
+}
+
+export interface Brand {
+  id: string
+  user_id: string
+  name: string
+  description: string
+  website?: string
+  avatar_url?: string
+  brand_identity?: BrandIdentity
+  created_at: string
+  campaigns?: { id: string; status: string; created_at: string; ideas?: unknown }[]
+}
+
 export interface Business {
   id: string
   user_id: string
@@ -158,7 +182,7 @@ export interface CreditTransaction {
 }
 
 export type Platform = 'instagram' | 'tiktok' | 'linkedin' | 'facebook' | 'google_ads'
-export type Tone = 'premium' | 'emocional' | 'corporativo' | 'agresivo' | 'divertido' | 'juvenil' | 'elegante' | 'cercano'
+export type Tone = 'premium' | 'emocional' | 'corporativo' | 'agresivo' | 'divertido' | 'juvenil' | 'elegante' | 'cercano' | 'profesional'
 export type Objective = 'ventas' | 'trafico' | 'marca' | 'leads' | 'engagement'
 export type ContentFormat = 'post' | 'carrusel' | 'story' | 'reel' | 'tiktok' | 'anuncio'
 

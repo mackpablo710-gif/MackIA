@@ -9,6 +9,8 @@ import { Dashboard } from './pages/Dashboard'
 import { Studio } from './pages/Studio'
 import { Library } from './pages/Library'
 import { Settings } from './pages/Settings'
+import { Brands } from './pages/Brands'
+import { BrandDashboard } from './pages/BrandDashboard'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore()
@@ -54,6 +56,8 @@ export default function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/brands" element={<Brands />} />
+          <Route path="/brands/:id" element={<BrandDashboard />} />
           <Route path="/studio" element={<Studio />} />
           <Route path="/library" element={<Library />} />
           <Route path="/settings" element={<Settings />} />

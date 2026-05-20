@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, ArrowRight, Loader2, ChevronLeft,
-  Instagram, Linkedin, Facebook, Video, FileText, Image, Layers
+  Instagram, Linkedin, Facebook, Video, FileText, Image, Layers, Building2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useStudioStore } from '../store/studioStore'
@@ -42,8 +43,18 @@ const FORMATS: { id: ContentFormat; label: string; icon: React.ReactNode; credit
 export function Studio() {
   const store = useStudioStore()
   const { refresh } = useCreditsStore()
+  const [searchParams] = useSearchParams()
   const [videoAnswers, setVideoAnswers] = useState<Record<string, string>>({})
   const [videoQuestions, setVideoQuestions] = useState<Array<{ id: string; question: string; options?: string[] }>>([])
+
+  useEffect(() => {
+    const brandId = searchParams.get('brandId')
+    if (brandId && (!store.activeBrand || store.activeBrand.id !== brandId)) {
+      api.get(`/brands/${brandId}`).then(({ data }) => {
+        store.setActiveBrand(data.brand)
+      }).catch(() => {})
+    }
+  }, [searchParams])
 
   async function handleAnalyze() {
     if (!store.businessDescription.trim()) {
@@ -116,6 +127,8 @@ export function Studio() {
         platform: store.selectedPlatform,
         format: store.selectedFormat,
         tone: store.selectedTone,
+        brandIdentity: store.brandIdentity ?? undefined,
+        logoUrl: store.brandLogoUrl ?? undefined,
       })
       store.setImageData(data.image_data)
     } catch (err: unknown) {
@@ -197,8 +210,18 @@ export function Studio() {
             <h1 className="text-xl font-bold text-text-main">Studio</h1>
             <p className="text-xs text-text-muted">Agencia de IA · Director Creativo</p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            {['brief', 'campaigns', 'content', 'image'].map((s, i) => (
+          <div className="ml-auto flex items-center gap-3">
+            {store.activeBrand && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-xl">
+                {store.activeBrand.avatar_url ? (
+                  <img src={store.activeBrand.avatar_url} alt="" className="w-5 h-5 rounded object-cover" />
+                ) : (
+                  <Building2 size={13} className="text-primary" />
+                )}
+                <span className="text-xs font-medium text-primary">{store.activeBrand.name}</span>
+              </div>
+            )}
+            {['brief', 'campaigns', 'content', 'image'].map((s) => (
               <div key={s} className={`w-2 h-2 rounded-full transition-all ${store.step === s ? 'bg-primary scale-125' : 'bg-border'}`} />
             ))}
           </div>

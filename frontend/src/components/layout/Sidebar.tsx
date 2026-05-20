@@ -1,11 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Sparkles, Library, Settings, LogOut, Zap } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Library, Settings, LogOut, Zap, Building2 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { CreditMeter } from '../ui/CreditMeter'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/studio', icon: Sparkles, label: 'Nuevo Studio' },
+  { to: '/brands', icon: Building2, label: 'Mis Marcas' },
+  { to: '/studio', icon: Sparkles, label: 'Studio' },
   { to: '/library', icon: Library, label: 'Biblioteca' },
   { to: '/settings', icon: Settings, label: 'Configuración' },
 ]

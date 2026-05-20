@@ -5,6 +5,7 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 
 import businessRoutes from './routes/business'
+import brandsRoutes from './routes/brands'
 import creditsRoutes from './routes/credits'
 import libraryRoutes from './routes/library'
 import analysisRoutes from './routes/generate/analysis'
@@ -31,6 +32,7 @@ app.use('/api/v1/generate', aiLimiter)
 app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.0' }))
 
 app.use('/api/v1/business', businessRoutes)
+app.use('/api/v1/brands', brandsRoutes)
 app.use('/api/v1/credits', creditsRoutes)
 app.use('/api/v1/library', libraryRoutes)
 app.use('/api/v1/generate', analysisRoutes)

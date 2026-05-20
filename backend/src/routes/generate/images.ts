@@ -9,11 +9,11 @@ import { supabase } from '../../lib/supabase'
 const router = Router()
 
 router.post('/prompt', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const { campaign, headline, subheadline, cta, platform, format, tone } = req.body
+  const { campaign, headline, subheadline, cta, platform, format, tone, brandIdentity, logoUrl } = req.body
 
   try {
     const result = await generateWithAI<Record<string, unknown>>(
-      buildImagePrompt(campaign, headline, subheadline, cta, platform, format ?? 'post', tone ?? 'moderno')
+      buildImagePrompt(campaign, headline, subheadline, cta, platform, format ?? 'post', tone ?? 'moderno', brandIdentity, logoUrl)
     )
     res.json({ image_data: result })
   } catch (err: unknown) {
