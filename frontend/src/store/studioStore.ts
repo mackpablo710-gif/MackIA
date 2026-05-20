@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { BusinessAnalysis, Brand, BrandIdentity, Campaign, PostContent, ImageData, VideoScript, StudioStep, ContentFormat, Platform, Tone, Objective } from '../types'
+import type { BusinessAnalysis, Brand, BrandIdentity, Campaign, PostContent, CarouselContent, ImageData, VideoScript, StudioStep, ContentFormat, Platform, Tone, Objective } from '../types'
 
 interface StudioState {
   step: StudioStep
@@ -14,6 +14,7 @@ interface StudioState {
   selectedTone: Tone
   selectedObjective: Objective
   postContent: PostContent | null
+  carouselContent: CarouselContent | null
   imageData: ImageData | null
   generatedImageUrl: string | null
   videoScript: VideoScript | null
@@ -23,6 +24,7 @@ interface StudioState {
   activeBrand: Brand | null
   brandIdentity: BrandIdentity | null
   brandLogoUrl: string | null
+  pendingIdeaLoad: { campaign: Campaign; campaignId: string } | null
 
   setStep: (step: StudioStep) => void
   setBusinessDescription: (desc: string) => void
@@ -36,12 +38,15 @@ interface StudioState {
   setTone: (tone: Tone) => void
   setObjective: (objective: Objective) => void
   setPostContent: (content: PostContent) => void
+  setCarouselContent: (content: CarouselContent) => void
   setImageData: (data: ImageData) => void
   setGeneratedImageUrl: (url: string) => void
   setVideoScript: (script: VideoScript) => void
   setContentId: (id: string) => void
   setLoading: (loading: boolean, message?: string) => void
   setActiveBrand: (brand: Brand | null) => void
+  loadIdea: (campaign: Campaign, campaignId: string) => void
+  clearPendingIdea: () => void
   reset: () => void
 }
 
@@ -58,6 +63,7 @@ const initialState = {
   selectedTone: 'profesional' as Tone,
   selectedObjective: 'ventas' as Objective,
   postContent: null,
+  carouselContent: null,
   imageData: null,
   generatedImageUrl: null,
   videoScript: null,
@@ -67,6 +73,7 @@ const initialState = {
   activeBrand: null,
   brandIdentity: null,
   brandLogoUrl: null,
+  pendingIdeaLoad: null,
 }
 
 export const useStudioStore = create<StudioState>((set) => ({
@@ -83,6 +90,7 @@ export const useStudioStore = create<StudioState>((set) => ({
   setTone: (tone) => set({ selectedTone: tone }),
   setObjective: (objective) => set({ selectedObjective: objective }),
   setPostContent: (content) => set({ postContent: content }),
+  setCarouselContent: (content) => set({ carouselContent: content }),
   setImageData: (data) => set({ imageData: data }),
   setGeneratedImageUrl: (url) => set({ generatedImageUrl: url }),
   setVideoScript: (script) => set({ videoScript: script }),
@@ -94,5 +102,9 @@ export const useStudioStore = create<StudioState>((set) => ({
     brandLogoUrl: brand?.avatar_url ?? null,
     businessDescription: brand?.description ?? '',
   }),
+  loadIdea: (campaign, campaignId) => set({
+    pendingIdeaLoad: { campaign, campaignId },
+  }),
+  clearPendingIdea: () => set({ pendingIdeaLoad: null }),
   reset: () => set(initialState),
 }))

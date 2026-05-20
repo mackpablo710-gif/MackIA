@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useStudioStore } from '../store/studioStore'
+import type { Campaign } from '../types'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Upload, Sparkles, Calendar, Loader2,
@@ -258,7 +260,7 @@ export function BrandDashboard() {
                 {campaigns.map((c, i) => (
                   <motion.div key={c.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}>
-                    <CampaignRow campaign={c} />
+                    <CampaignRow campaign={c} brandId={id!} />
                   </motion.div>
                 ))}
               </div>
@@ -270,8 +272,10 @@ export function BrandDashboard() {
   )
 }
 
-function CampaignRow({ campaign }: { campaign: CampaignSummary }) {
+function CampaignRow({ campaign, brandId }: { campaign: CampaignSummary; brandId: string }) {
   const [expanded, setExpanded] = useState(false)
+  const navigate = useNavigate()
+  const store = useStudioStore()
   const date = new Date(campaign.created_at).toLocaleDateString('es-ES', {
     day: 'numeric', month: 'short', year: 'numeric'
   })
@@ -345,14 +349,40 @@ function CampaignRow({ campaign }: { campaign: CampaignSummary }) {
                   </div>
                   <p className="text-xs text-text-muted mb-2">{idea.concept}</p>
                   {idea.hook && (
-                    <div className="p-2 bg-primary/5 border border-primary/15 rounded-lg">
+                    <div className="p-2 bg-primary/5 border border-primary/15 rounded-lg mb-2">
                       <p className="text-[10px] text-primary mb-0.5 font-medium">Hook</p>
                       <p className="text-xs text-text-main italic">"{idea.hook}"</p>
                     </div>
                   )}
-                  <div className="flex gap-2 mt-2">
-                    {idea.angle && <span className="text-[10px] text-text-muted">Ángulo: {idea.angle}</span>}
-                    {idea.emotion && <span className="text-[10px] text-text-muted">· {idea.emotion}</span>}
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex gap-2">
+                      {idea.angle && <span className="text-[10px] text-text-muted">Ángulo: {idea.angle}</span>}
+                      {idea.emotion && <span className="text-[10px] text-text-muted">· {idea.emotion}</span>}
+                    </div>
+                    <button
+                      onClick={() => {
+                        const campaignObj: Campaign = {
+                          id: idea.id ?? i,
+                          title: idea.title,
+                          concept: idea.concept,
+                          angle: idea.angle,
+                          hook: idea.hook,
+                          headline: idea.title,
+                          subheadline: idea.concept,
+                          body_preview: idea.concept,
+                          why_it_works: '',
+                          viral_potential: idea.viral_potential,
+                          best_format: idea.best_format,
+                          emotion: idea.emotion,
+                          weakness: '',
+                        }
+                        store.loadIdea(campaignObj, campaign.id)
+                        navigate(`/studio?brandId=${brandId}`)
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 bg-primary text-white text-[10px] font-medium rounded-lg hover:bg-primary/80 transition-colors"
+                    >
+                      <Zap size={10} /> Usar esta idea
+                    </button>
                   </div>
                 </div>
               ))}

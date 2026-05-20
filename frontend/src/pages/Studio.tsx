@@ -12,6 +12,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { CampaignCard } from '../components/creative/CampaignCard'
 import { PostPreview } from '../components/creative/PostPreview'
+import { CarouselPreview } from '../components/creative/CarouselPreview'
 import { ImageCanvas } from '../components/creative/ImageCanvas'
 import { VideoStoryboard } from '../components/creative/VideoStoryboard'
 import api from '../lib/api'
@@ -59,6 +60,16 @@ export function Studio() {
     }
   }, [searchParams])
 
+  // Handle "Usar esta idea" from BrandDashboard
+  useEffect(() => {
+    if (store.pendingIdeaLoad) {
+      store.setSelectedCampaign(store.pendingIdeaLoad.campaign)
+      store.setCampaignId(store.pendingIdeaLoad.campaignId)
+      store.setStep('content')
+      store.clearPendingIdea()
+    }
+  }, [])
+
   useEffect(() => {
     if (store.postContent) {
       setEditableTexts({
@@ -66,8 +77,16 @@ export function Studio() {
         subheadline: store.postContent.subheadline,
         cta: store.postContent.cta,
       })
+    } else if (store.carouselContent?.slides?.length) {
+      const first = store.carouselContent.slides[0]
+      const last = store.carouselContent.slides[store.carouselContent.slides.length - 1]
+      setEditableTexts({
+        headline: first.headline,
+        subheadline: first.subtext,
+        cta: last.headline,
+      })
     }
-  }, [store.postContent])
+  }, [store.postContent, store.carouselContent])
 
   async function handleAnalyze() {
     if (!store.businessDescription.trim()) {
@@ -88,7 +107,7 @@ export function Studio() {
   }
 
   async function handleGenerateCampaigns() {
-    store.setLoading(true, 'Generando 10 ideas de campaña...')
+    store.setLoading(true, 'Generando 5 ideas de campaña...')
     try {
       const { data } = await api.post('/generate/campaigns', {
         analysis: store.analysis,
@@ -109,18 +128,31 @@ export function Studio() {
 
   async function handleGeneratePost() {
     if (!store.selectedCampaign) return
-    store.setLoading(true, 'Escribiendo el copy perfecto...')
+    const isCarousel = store.selectedFormat === 'carrusel'
+    store.setLoading(true, isCarousel ? 'Diseñando slides del carrusel...' : 'Escribiendo el copy perfecto...')
     try {
-      const { data } = await api.post('/generate/post', {
-        campaign: store.selectedCampaign,
-        platform: store.selectedPlatform,
-        format: store.selectedFormat,
-        tone: store.selectedTone,
-        campaign_id: store.campaignId,
-      })
-      store.setPostContent(data.content)
-      store.setContentId(data.content_id)
-      store.setStep('image')
+      if (isCarousel) {
+        const { data } = await api.post('/generate/carousel', {
+          campaign: store.selectedCampaign,
+          platform: store.selectedPlatform,
+          tone: store.selectedTone,
+          campaign_id: store.campaignId,
+        })
+        store.setCarouselContent(data.content)
+        store.setContentId(data.content_id)
+        store.setStep('image')
+      } else {
+        const { data } = await api.post('/generate/post', {
+          campaign: store.selectedCampaign,
+          platform: store.selectedPlatform,
+          format: store.selectedFormat,
+          tone: store.selectedTone,
+          campaign_id: store.campaignId,
+        })
+        store.setPostContent(data.content)
+        store.setContentId(data.content_id)
+        store.setStep('image')
+      }
       await refresh()
     } catch (err: unknown) {
       toast.error((err as Error).message)
@@ -326,7 +358,7 @@ export function Studio() {
                   <div className="space-y-3">
                     {[
                       { icon: '🧠', title: 'Análisis profundo', desc: 'Detecta propuesta de valor, dolores del cliente y diferenciadores' },
-                      { icon: '💡', title: '10 ideas de campaña', desc: 'Conceptos únicos con hooks, ángulos y potencial viral' },
+                      { icon: '💡', title: '5 ideas de campaña', desc: 'Conceptos únicos con hooks, ángulos y potencial viral' },
                       { icon: '✍️', title: 'Copy completo', desc: 'Headline, caption, CTA y hashtags listos para publicar' },
                       { icon: '🎨', title: 'Imagen premium', desc: 'Creatividad visual estilo agencia de nivel internacional' },
                     ].map(({ icon, title, desc }) => (
@@ -376,7 +408,7 @@ export function Studio() {
                   </div>
 
                   <Button onClick={handleGenerateCampaigns} loading={store.isLoading} size="lg" className="w-full" icon={<Sparkles size={18} />}>
-                    {store.isLoading ? store.loadingMessage : 'Generar 10 ideas de campaña (1 crédito)'}
+                    {store.isLoading ? store.loadingMessage : 'Generar 5 ideas de campaña (1 crédito)'}
                   </Button>
                 </div>
               )}
@@ -386,7 +418,7 @@ export function Studio() {
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h2 className="text-lg font-semibold text-text-main">Elige tu campaña</h2>
-                      <p className="text-sm text-text-muted">El director creativo generó 10 conceptos únicos</p>
+                      <p className="text-sm text-text-muted">El director creativo generó {store.campaigns.length} conceptos únicos</p>
                     </div>
                     {store.selectedCampaign && (
                       <Button onClick={() => store.setStep('content')} icon={<ArrowRight size={16} />}>
@@ -456,6 +488,8 @@ export function Studio() {
                     <Loader2 size={32} className="text-primary animate-spin" />
                     <p className="text-sm text-text-muted">{store.loadingMessage}</p>
                   </div>
+                ) : store.carouselContent ? (
+                  <CarouselPreview content={store.carouselContent} platform={store.selectedPlatform} />
                 ) : store.postContent ? (
                   <PostPreview content={store.postContent} platform={store.selectedPlatform} />
                 ) : (
@@ -477,8 +511,36 @@ export function Studio() {
                   <p className="text-sm text-text-muted">La IA construirá el prompt visual y generará la imagen</p>
                 </div>
 
+                {/* Campaign context */}
+                {store.selectedCampaign && (
+                  <div className="p-4 bg-surface border border-border rounded-xl space-y-3">
+                    <p className="text-xs font-semibold text-text-main">Campaña seleccionada</p>
+                    <p className="text-sm font-medium text-primary">{store.selectedCampaign.title}</p>
+                    {store.selectedCampaign.hook && (
+                      <div className="p-2 bg-primary/5 border border-primary/15 rounded-lg">
+                        <p className="text-[10px] text-primary mb-0.5 font-medium">Hook</p>
+                        <p className="text-xs text-text-main italic">"{store.selectedCampaign.hook}"</p>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {store.selectedCampaign.angle && (
+                        <span className="text-[10px] px-2 py-0.5 bg-surface border border-border text-text-muted rounded-full capitalize">Ángulo: {store.selectedCampaign.angle}</span>
+                      )}
+                      {store.selectedCampaign.emotion && (
+                        <span className="text-[10px] px-2 py-0.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-full capitalize">{store.selectedCampaign.emotion}</span>
+                      )}
+                      {store.selectedCampaign.best_format && (
+                        <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full capitalize">{store.selectedCampaign.best_format}</span>
+                      )}
+                    </div>
+                    {store.selectedCampaign.concept && (
+                      <p className="text-xs text-text-muted">{store.selectedCampaign.concept}</p>
+                    )}
+                  </div>
+                )}
+
                 {/* Textos editables */}
-                {store.postContent && (
+                {(store.postContent || store.carouselContent) && (
                   <div className="p-4 bg-surface border border-border rounded-xl space-y-3">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-semibold text-text-main">Textos del anuncio</p>
@@ -557,6 +619,9 @@ export function Studio() {
                   onGenerate={handleGenerateImage}
                   onRegenerate={handleGenerateImage}
                   isLoading={store.isLoading && store.loadingMessage.includes('imagen')}
+                  headline={editableTexts.headline || store.postContent?.headline}
+                  subheadline={editableTexts.subheadline || store.postContent?.subheadline}
+                  cta={editableTexts.cta || store.postContent?.cta}
                 />
               </div>
             </motion.div>

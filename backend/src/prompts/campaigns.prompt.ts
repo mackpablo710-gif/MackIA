@@ -8,7 +8,7 @@ OBJETIVO: ${objective}
 PLATAFORMAS: ${platforms.join(', ')}
 TONO: ${tone}
 
-Genera exactamente 10 ideas de campaña únicas. Sé conciso pero poderoso. NO incluyas textos de más de 2 oraciones por campo.
+Genera exactamente 5 ideas de campaña únicas y poderosas. Sé conciso. NO incluyas textos de más de 2 oraciones por campo.
 
 Devuelve ÚNICAMENTE este JSON válido y completo:
 {
