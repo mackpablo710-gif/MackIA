@@ -46,6 +46,8 @@ export function Studio() {
   const [searchParams] = useSearchParams()
   const [videoAnswers, setVideoAnswers] = useState<Record<string, string>>({})
   const [videoQuestions, setVideoQuestions] = useState<Array<{ id: string; question: string; options?: string[] }>>([])
+  const [editableTexts, setEditableTexts] = useState({ headline: '', subheadline: '', cta: '' })
+  const [editingTexts, setEditingTexts] = useState(false)
 
   useEffect(() => {
     const brandId = searchParams.get('brandId')
@@ -55,6 +57,16 @@ export function Studio() {
       }).catch(() => {})
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (store.postContent) {
+      setEditableTexts({
+        headline: store.postContent.headline,
+        subheadline: store.postContent.subheadline,
+        cta: store.postContent.cta,
+      })
+    }
+  }, [store.postContent])
 
   async function handleAnalyze() {
     if (!store.businessDescription.trim()) {
@@ -121,9 +133,9 @@ export function Studio() {
     try {
       const { data } = await api.post('/generate/images/prompt', {
         campaign: store.selectedCampaign,
-        headline: store.postContent.headline,
-        subheadline: store.postContent.subheadline,
-        cta: store.postContent.cta,
+        headline: editableTexts.headline || store.postContent.headline,
+        subheadline: editableTexts.subheadline || store.postContent.subheadline,
+        cta: editableTexts.cta || store.postContent.cta,
         platform: store.selectedPlatform,
         format: store.selectedFormat,
         tone: store.selectedTone,
@@ -446,6 +458,47 @@ export function Studio() {
                   <p className="text-sm text-text-muted">La IA construirá el prompt visual y generará la imagen</p>
                 </div>
 
+                {/* Textos editables */}
+                {store.postContent && (
+                  <div className="p-4 bg-surface border border-border rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-text-main">Textos del anuncio</p>
+                      <button onClick={() => setEditingTexts(!editingTexts)}
+                        className="text-[10px] text-primary hover:text-primary/80 transition-colors">
+                        {editingTexts ? 'Listo' : 'Editar'}
+                      </button>
+                    </div>
+                    {editingTexts ? (
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-[10px] text-text-muted block mb-1">Titular</label>
+                          <input value={editableTexts.headline}
+                            onChange={e => setEditableTexts(p => ({ ...p, headline: e.target.value }))}
+                            className="w-full bg-bg border border-border rounded-lg px-3 py-1.5 text-xs text-text-main focus:outline-none focus:border-primary" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-text-muted block mb-1">Secundario</label>
+                          <input value={editableTexts.subheadline}
+                            onChange={e => setEditableTexts(p => ({ ...p, subheadline: e.target.value }))}
+                            className="w-full bg-bg border border-border rounded-lg px-3 py-1.5 text-xs text-text-main focus:outline-none focus:border-primary" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-text-muted block mb-1">CTA</label>
+                          <input value={editableTexts.cta}
+                            onChange={e => setEditableTexts(p => ({ ...p, cta: e.target.value }))}
+                            className="w-full bg-bg border border-border rounded-lg px-3 py-1.5 text-xs text-text-main focus:outline-none focus:border-primary" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 text-xs">
+                        <p className="text-text-muted"><span className="text-text-main font-medium">Titular:</span> {editableTexts.headline}</p>
+                        <p className="text-text-muted"><span className="text-text-main font-medium">Secundario:</span> {editableTexts.subheadline}</p>
+                        <p className="text-text-muted"><span className="text-text-main font-medium">CTA:</span> {editableTexts.cta}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {!store.imageData ? (
                   <Button onClick={handleGenerateImagePrompt} loading={store.isLoading} size="lg" className="w-full" icon={<Image size={16} />}>
                     {store.isLoading ? store.loadingMessage : 'Preparar prompt visual'}
@@ -468,14 +521,12 @@ export function Studio() {
                         {store.isLoading ? store.loadingMessage : 'Generar imagen (5 créditos)'}
                       </Button>
                     )}
-                  </div>
-                )}
-
-                {store.postContent && (
-                  <div className="p-4 bg-surface border border-border rounded-xl text-xs space-y-2">
-                    <p className="font-semibold text-text-main">Textos del anuncio</p>
-                    <p className="text-text-muted"><span className="text-text-main">Titular:</span> {store.postContent.headline}</p>
-                    <p className="text-text-muted"><span className="text-text-main">CTA:</span> {store.postContent.cta}</p>
+                    {store.generatedImageUrl && (
+                      <Button onClick={() => { store.setImageData(store.imageData!); handleGenerateImagePrompt() }}
+                        variant="secondary" size="sm" className="w-full" icon={<Sparkles size={14} />}>
+                        Regenerar con nuevos textos
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
