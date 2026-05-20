@@ -4,13 +4,14 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 export async function chatCompletion(systemPrompt: string, userMessage: string = 'Procede.'): Promise<string> {
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
     ],
     temperature: 0.8,
     max_tokens: 4000,
+    response_format: { type: 'json_object' },
   })
 
   return completion.choices[0]?.message?.content ?? ''
@@ -36,7 +37,7 @@ export async function streamCompletion(
   userMessage: string = 'Procede.'
 ): Promise<void> {
   const stream = await openai.chat.completions.create({
-    model: 'gpt-4o',
+    model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },

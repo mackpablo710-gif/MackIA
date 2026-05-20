@@ -1,7 +1,7 @@
 import { Router, Response } from 'express'
 import { authMiddleware, AuthRequest } from '../../middleware/auth.middleware'
 import { creditsMiddleware, deductCredits } from '../../middleware/credits.middleware'
-import { generateWithOpenAI } from '../../services/openai.service'
+import { generateWithAI } from '../../services/gemini.service'
 import { buildCampaignsPrompt } from '../../prompts/campaigns.prompt'
 import { supabase } from '../../lib/supabase'
 
@@ -15,7 +15,7 @@ router.post('/', authMiddleware, creditsMiddleware('ideas'), async (req: AuthReq
   }
 
   try {
-    const result = await generateWithOpenAI<{ campaigns: unknown[] }>(
+    const result = await generateWithAI<{ campaigns: unknown[] }>(
       buildCampaignsPrompt(analysis, objective, platforms ?? ['instagram'], tone ?? 'profesional')
     )
 
@@ -33,9 +33,10 @@ router.post('/', authMiddleware, creditsMiddleware('ideas'), async (req: AuthReq
     await deductCredits(req.user!.id, 'ideas', campaign?.id)
 
     res.json({ campaigns: result.campaigns, campaign_id: campaign?.id })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Campaign generation failed' })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[campaigns]', message)
+    res.status(500).json({ error: 'Campaign generation failed', detail: message })
   }
 })
 

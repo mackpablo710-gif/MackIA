@@ -1,6 +1,6 @@
 import { Router, Response } from 'express'
 import { authMiddleware, AuthRequest } from '../../middleware/auth.middleware'
-import { generateWithOpenAI } from '../../services/openai.service'
+import { generateWithAI } from '../../services/gemini.service'
 import { buildAnalystPrompt, buildQuestionsPrompt } from '../../prompts/analyst.prompt'
 import { supabase } from '../../lib/supabase'
 
@@ -11,7 +11,7 @@ router.post('/analyze', authMiddleware, async (req: AuthRequest, res: Response) 
   if (!description) return res.status(400).json({ error: 'Description required' })
 
   try {
-    const analysis = await generateWithOpenAI<Record<string, unknown>>(buildAnalystPrompt(description))
+    const analysis = await generateWithAI<Record<string, unknown>>(buildAnalystPrompt(description))
 
     if (business_id) {
       await supabase.from('businesses').update({
@@ -25,9 +25,10 @@ router.post('/analyze', authMiddleware, async (req: AuthRequest, res: Response) 
     }
 
     res.json({ analysis })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Analysis failed' })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[analyze]', message)
+    res.status(500).json({ error: 'Analysis failed', detail: message })
   }
 })
 
@@ -36,13 +37,14 @@ router.post('/questions', authMiddleware, async (req: AuthRequest, res: Response
   if (!description) return res.status(400).json({ error: 'Description required' })
 
   try {
-    const result = await generateWithOpenAI<{ questions: unknown[] }>(
+    const result = await generateWithAI<{ questions: unknown[] }>(
       buildQuestionsPrompt(description, missing_context ?? [])
     )
     res.json(result)
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Questions generation failed' })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[questions]', message)
+    res.status(500).json({ error: 'Questions generation failed', detail: message })
   }
 })
 

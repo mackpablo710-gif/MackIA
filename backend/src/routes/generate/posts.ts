@@ -1,7 +1,7 @@
 import { Router, Response } from 'express'
 import { authMiddleware, AuthRequest } from '../../middleware/auth.middleware'
 import { creditsMiddleware, deductCredits } from '../../middleware/credits.middleware'
-import { generateWithOpenAI } from '../../services/openai.service'
+import { generateWithAI } from '../../services/gemini.service'
 import { buildPostPrompt, buildCarouselPrompt } from '../../prompts/copywriter.prompt'
 import { supabase } from '../../lib/supabase'
 
@@ -13,7 +13,7 @@ router.post('/post', authMiddleware, creditsMiddleware('post'), async (req: Auth
   if (!campaign || !platform) return res.status(400).json({ error: 'campaign and platform required' })
 
   try {
-    const result = await generateWithOpenAI<Record<string, unknown>>(
+    const result = await generateWithAI<Record<string, unknown>>(
       buildPostPrompt(campaign, platform, format ?? 'post', tone ?? 'profesional')
     )
 
@@ -34,9 +34,10 @@ router.post('/post', authMiddleware, creditsMiddleware('post'), async (req: Auth
     await deductCredits(req.user!.id, 'post', content?.id)
 
     res.json({ content: result, content_id: content?.id })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Post generation failed' })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[post]', message)
+    res.status(500).json({ error: 'Post generation failed', detail: message })
   }
 })
 
@@ -46,7 +47,7 @@ router.post('/carousel', authMiddleware, creditsMiddleware('carousel'), async (r
   if (!campaign || !platform) return res.status(400).json({ error: 'campaign and platform required' })
 
   try {
-    const result = await generateWithOpenAI<Record<string, unknown>>(
+    const result = await generateWithAI<Record<string, unknown>>(
       buildCarouselPrompt(campaign, platform, tone ?? 'profesional')
     )
 
@@ -64,9 +65,10 @@ router.post('/carousel', authMiddleware, creditsMiddleware('carousel'), async (r
     await deductCredits(req.user!.id, 'carousel', content?.id)
 
     res.json({ content: result, content_id: content?.id })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Carousel generation failed' })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[carousel]', message)
+    res.status(500).json({ error: 'Carousel generation failed', detail: message })
   }
 })
 
