@@ -95,6 +95,7 @@ export function Studio() {
         objective: store.selectedObjective,
         platforms: [store.selectedPlatform],
         tone: store.selectedTone,
+        business_id: store.activeBrand?.id ?? undefined,
       })
       store.setCampaigns(data.campaigns)
       store.setCampaignId(data.campaign_id)

@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Upload, Sparkles, Calendar, Loader2,
-  Building2, Palette, Image, ChevronRight, RefreshCw
+  Building2, Palette, Image, ChevronDown, ChevronUp, RefreshCw, Zap
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../lib/api'
@@ -11,13 +11,24 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import type { Brand } from '../types'
 
+interface CampaignIdea {
+  id: number
+  title: string
+  concept: string
+  angle: string
+  hook: string
+  emotion: string
+  viral_potential: string
+  best_format: string
+}
+
 interface CampaignSummary {
   id: string
   objective: string
   platforms: string[]
   status: string
   created_at: string
-  ideas?: { title?: string }[]
+  ideas?: CampaignIdea[]
 }
 
 export function BrandDashboard() {
@@ -260,39 +271,101 @@ export function BrandDashboard() {
 }
 
 function CampaignRow({ campaign }: { campaign: CampaignSummary }) {
+  const [expanded, setExpanded] = useState(false)
   const date = new Date(campaign.created_at).toLocaleDateString('es-ES', {
     day: 'numeric', month: 'short', year: 'numeric'
   })
-  const firstIdea = Array.isArray(campaign.ideas) ? campaign.ideas[0]?.title : undefined
+  const ideas: CampaignIdea[] = Array.isArray(campaign.ideas) ? campaign.ideas : []
+  const firstIdea = ideas[0]
 
   const statusColor: Record<string, string> = {
     draft: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+    ideas_generated: 'bg-primary/10 text-primary border-primary/20',
     active: 'bg-green-500/10 text-green-400 border-green-500/20',
     completed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   }
 
   return (
-    <div className="p-4 bg-surface border border-border rounded-xl hover:border-primary/30 transition-colors">
-      <div className="flex items-center justify-between">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden transition-all duration-200 hover:border-primary/30">
+      {/* Header row */}
+      <button onClick={() => setExpanded(!expanded)}
+        className="w-full p-4 text-left flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className={`text-[10px] px-2 py-0.5 rounded-full border capitalize ${statusColor[campaign.status] ?? statusColor.draft}`}>
-              {campaign.status ?? 'borrador'}
+              {campaign.status === 'ideas_generated' ? `${ideas.length} ideas` : campaign.status ?? 'borrador'}
             </span>
             <span className="text-[10px] text-text-muted capitalize">{campaign.objective}</span>
-          </div>
-          <p className="text-sm font-medium text-text-main truncate">{firstIdea ?? 'Campaña sin título'}</p>
-          <div className="flex items-center gap-3 mt-1.5">
-            <span className="flex items-center gap-1 text-[10px] text-text-muted">
-              <Calendar size={10} /> {date}
-            </span>
             {campaign.platforms?.map(p => (
-              <span key={p} className="text-[10px] text-text-muted capitalize">{p}</span>
+              <span key={p} className="text-[10px] text-text-muted capitalize">· {p}</span>
             ))}
           </div>
+          <p className="text-sm font-medium text-text-main">
+            {firstIdea?.title ?? 'Campaña generada'}
+          </p>
+          {firstIdea?.concept && (
+            <p className="text-xs text-text-muted mt-0.5 line-clamp-1">{firstIdea.concept}</p>
+          )}
         </div>
-        <ChevronRight size={15} className="text-text-muted flex-shrink-0" />
-      </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="flex items-center gap-1 text-[10px] text-text-muted">
+            <Calendar size={10} /> {date}
+          </span>
+          {expanded ? <ChevronUp size={15} className="text-text-muted" /> : <ChevronDown size={15} className="text-text-muted" />}
+        </div>
+      </button>
+
+      {/* Expanded ideas */}
+      <AnimatePresence>
+        {expanded && ideas.length > 0 && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
+            className="border-t border-border overflow-hidden">
+            <div className="p-4 space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-text-muted mb-3 font-medium">
+                Ideas generadas por la agencia IA
+              </p>
+              {ideas.map((idea, i) => (
+                <div key={idea.id ?? i}
+                  className="p-3 bg-bg border border-border rounded-xl hover:border-primary/30 transition-colors">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <p className="text-sm font-semibold text-text-main">{idea.title}</p>
+                    <div className="flex gap-1 flex-shrink-0">
+                      {idea.viral_potential && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded-full capitalize">
+                          {idea.viral_potential}
+                        </span>
+                      )}
+                      {idea.best_format && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full capitalize">
+                          {idea.best_format}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-text-muted mb-2">{idea.concept}</p>
+                  {idea.hook && (
+                    <div className="p-2 bg-primary/5 border border-primary/15 rounded-lg">
+                      <p className="text-[10px] text-primary mb-0.5 font-medium">Hook</p>
+                      <p className="text-xs text-text-main italic">"{idea.hook}"</p>
+                    </div>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    {idea.angle && <span className="text-[10px] text-text-muted">Ángulo: {idea.angle}</span>}
+                    {idea.emotion && <span className="text-[10px] text-text-muted">· {idea.emotion}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+        {expanded && ideas.length === 0 && (
+          <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
+            className="border-t border-border p-4 text-center">
+            <p className="text-xs text-text-muted">No hay ideas guardadas en esta campaña</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
