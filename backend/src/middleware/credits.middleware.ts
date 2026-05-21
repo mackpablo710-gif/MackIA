@@ -9,6 +9,7 @@ export const CREDIT_COSTS: Record<string, number> = {
   image: 5,
   video_script: 3,
   video: 10,
+  video_render: 15,
   analysis: 0,
   questions: 0,
 }

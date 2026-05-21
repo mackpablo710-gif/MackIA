@@ -12,6 +12,7 @@ import analysisRoutes from './routes/generate/analysis'
 import campaignsRoutes from './routes/generate/campaigns'
 import postsRoutes from './routes/generate/posts'
 import imagesRoutes from './routes/generate/images'
+import designsRoutes from './routes/generate/designs'
 import videosRoutes from './routes/generate/videos'
 
 const app = express()
@@ -19,7 +20,15 @@ const PORT = process.env.PORT ?? 3001
 
 app.use(helmet())
 app.use(cors({
-  origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  origin: (origin, cb) => {
+    // Allow any localhost port (5173, 5174, 5175, etc.) + configured frontend URL
+    const allowed = process.env.FRONTEND_URL ?? ''
+    if (!origin || origin.startsWith('http://localhost:') || origin === allowed) {
+      cb(null, true)
+    } else {
+      cb(new Error('Not allowed by CORS'))
+    }
+  },
   credentials: true,
 }))
 app.use(express.json({ limit: '10mb' }))
@@ -39,6 +48,7 @@ app.use('/api/v1/generate', analysisRoutes)
 app.use('/api/v1/generate/campaigns', campaignsRoutes)
 app.use('/api/v1/generate', postsRoutes)
 app.use('/api/v1/generate/images', imagesRoutes)
+app.use('/api/v1/generate/images', designsRoutes)
 app.use('/api/v1/generate/videos', videosRoutes)
 
 app.listen(PORT, () => {

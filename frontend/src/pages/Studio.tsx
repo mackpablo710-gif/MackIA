@@ -51,6 +51,9 @@ export function Studio() {
   const [editingTexts, setEditingTexts] = useState(false)
   const [videoError, setVideoError] = useState<string | null>(null)
   const [visualStyle, setVisualStyle] = useState<string>('moderno')
+  const [imageMode, setImageMode] = useState<'design' | 'photo'>('design')
+  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null)
+  const [videoRenderError, setVideoRenderError] = useState<string | null>(null)
 
   useEffect(() => {
     const brandId = searchParams.get('brandId')
@@ -201,6 +204,59 @@ export function Studio() {
       await refresh()
     } catch (err: unknown) {
       toast.error((err as Error).message)
+    } finally {
+      store.setLoading(false)
+    }
+  }
+
+  async function handleGenerateDesign() {
+    store.setLoading(true, 'Diseñando anuncio con IA...')
+    try {
+      const { data } = await api.post('/generate/images/design', {
+        campaign: store.selectedCampaign,
+        headline: editableTexts.headline || store.postContent?.headline || '',
+        subheadline: editableTexts.subheadline || store.postContent?.subheadline || '',
+        cta: editableTexts.cta || store.postContent?.cta || '',
+        platform: store.selectedPlatform,
+        format: store.selectedFormat,
+        tone: store.selectedTone,
+        visualStyle,
+        brandIdentity: store.brandIdentity ?? undefined,
+        brandName: store.activeBrand?.name,
+        brandTagline: store.activeBrand?.description,
+        logoUrl: store.brandLogoUrl ?? undefined,
+        campaign_id: store.campaignId,
+        content_id: store.contentId,
+      })
+      store.setGeneratedImageUrl(data.image_url)
+      if (data.design_spec) store.setImageData(data.design_spec)
+      await refresh()
+      toast.success('¡Diseño generado!')
+    } catch (err: unknown) {
+      toast.error((err as Error).message)
+    } finally {
+      store.setLoading(false)
+    }
+  }
+
+  async function handleRenderVideo() {
+    setVideoRenderError(null)
+    store.setLoading(true, 'Generando video real con IA (2-3 min)...')
+    try {
+      const { data } = await api.post('/generate/videos/render', {
+        script: store.videoScript,
+        campaign: store.selectedCampaign,
+        platform: store.selectedPlatform,
+        duration_seconds: videoAnswers.duration === '15 segundos' ? 5 : 10,
+        campaign_id: store.campaignId,
+      })
+      setGeneratedVideoUrl(data.video_url)
+      await refresh()
+      toast.success('¡Video generado!')
+    } catch (err: unknown) {
+      const msg = (err as Error).message
+      setVideoRenderError(msg)
+      toast.error(msg)
     } finally {
       store.setLoading(false)
     }
@@ -510,8 +566,24 @@ export function Studio() {
               className="grid grid-cols-5 gap-6">
               <div className="col-span-2 space-y-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-text-main mb-1">Imagen premium</h2>
-                  <p className="text-sm text-text-muted">La IA construirá el prompt visual y generará la imagen</p>
+                  <h2 className="text-lg font-semibold text-text-main mb-1">Generar imagen</h2>
+                  <p className="text-sm text-text-muted">Elige el tipo de imagen que quieres crear</p>
+                </div>
+
+                {/* Mode selector */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setImageMode('design')}
+                    className={`p-3 rounded-xl border text-left transition-all ${imageMode === 'design' ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-surface border-border text-text-muted hover:border-primary/30'}`}>
+                    <div className="text-base mb-1">🎨</div>
+                    <div className="text-xs font-semibold">Diseño publicitario</div>
+                    <div className="text-[10px] opacity-70 mt-0.5">Tipografía, layout, marca</div>
+                  </button>
+                  <button onClick={() => setImageMode('photo')}
+                    className={`p-3 rounded-xl border text-left transition-all ${imageMode === 'photo' ? 'bg-primary/15 border-primary/40 text-primary' : 'bg-surface border-border text-text-muted hover:border-primary/30'}`}>
+                    <div className="text-base mb-1">📸</div>
+                    <div className="text-xs font-semibold">Escena fotorrealista</div>
+                    <div className="text-[10px] opacity-70 mt-0.5">Personas, ambientes, emociones</div>
+                  </button>
                 </div>
 
                 {/* Campaign context */}
@@ -608,35 +680,50 @@ export function Studio() {
                   </div>
                 </div>
 
-                {!store.imageData ? (
-                  <Button onClick={handleGenerateImagePrompt} loading={store.isLoading} size="lg" className="w-full" icon={<Image size={16} />}>
-                    {store.isLoading ? store.loadingMessage : 'Preparar concepto visual'}
+                {imageMode === 'design' ? (
+                  /* ── DISEÑO PUBLICITARIO ── */
+                  <Button onClick={handleGenerateDesign} loading={store.isLoading} size="lg" className="w-full" icon={<Sparkles size={16} />}>
+                    {store.isLoading ? store.loadingMessage : 'Generar diseño (5 créditos)'}
                   </Button>
                 ) : (
-                  <div className="space-y-3">
-                    <div className="p-4 bg-surface border border-border rounded-xl">
-                      <p className="text-xs text-text-muted mb-2">Estilo detectado</p>
-                      <p className="text-sm text-text-main">{store.imageData.style}</p>
-                    </div>
-                    {store.imageData.color_palette?.length > 0 && (
-                      <div className="flex gap-2">
-                        {store.imageData.color_palette.map((color) => (
-                          <div key={color} className="w-8 h-8 rounded-lg border border-border" style={{ backgroundColor: color }} title={color} />
-                        ))}
+                  /* ── ESCENA FOTORREALISTA ── */
+                  !store.imageData ? (
+                    <Button onClick={handleGenerateImagePrompt} loading={store.isLoading} size="lg" className="w-full" icon={<Image size={16} />}>
+                      {store.isLoading ? store.loadingMessage : 'Preparar concepto visual'}
+                    </Button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="p-4 bg-surface border border-border rounded-xl">
+                        <p className="text-xs text-text-muted mb-2">Estilo detectado</p>
+                        <p className="text-sm text-text-main">{store.imageData.style}</p>
                       </div>
-                    )}
-                    {!store.generatedImageUrl && (
-                      <Button onClick={handleGenerateImage} loading={store.isLoading} size="lg" className="w-full" icon={<Sparkles size={16} />}>
-                        {store.isLoading ? store.loadingMessage : 'Generar imagen (5 créditos)'}
-                      </Button>
-                    )}
-                    {store.generatedImageUrl && (
-                      <Button onClick={handleGenerateImagePrompt}
-                        variant="secondary" size="sm" className="w-full" icon={<Sparkles size={14} />}>
-                        Regenerar concepto
-                      </Button>
-                    )}
-                  </div>
+                      {store.imageData.color_palette?.length > 0 && (
+                        <div className="flex gap-2">
+                          {store.imageData.color_palette.map((color) => (
+                            <div key={color} className="w-8 h-8 rounded-lg border border-border" style={{ backgroundColor: color }} title={color} />
+                          ))}
+                        </div>
+                      )}
+                      {!store.generatedImageUrl && (
+                        <Button onClick={handleGenerateImage} loading={store.isLoading} size="lg" className="w-full" icon={<Sparkles size={16} />}>
+                          {store.isLoading ? store.loadingMessage : 'Generar foto (5 créditos)'}
+                        </Button>
+                      )}
+                      {store.generatedImageUrl && (
+                        <Button onClick={handleGenerateImagePrompt}
+                          variant="secondary" size="sm" className="w-full" icon={<Sparkles size={14} />}>
+                          Regenerar concepto
+                        </Button>
+                      )}
+                    </div>
+                  )
+                )}
+
+                {store.generatedImageUrl && (
+                  <Button onClick={imageMode === 'design' ? handleGenerateDesign : handleGenerateImagePrompt}
+                    variant="secondary" size="sm" className="w-full" icon={<Sparkles size={14} />}>
+                    Regenerar
+                  </Button>
                 )}
               </div>
 
@@ -685,6 +772,28 @@ export function Studio() {
                   {store.isLoading ? store.loadingMessage : 'Generar guion (3 créditos)'}
                 </Button>
 
+                {store.videoScript && (
+                  <div className="space-y-2">
+                    <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                      <p className="text-[10px] text-primary uppercase font-medium mb-1">¿Quieres el video real?</p>
+                      <p className="text-xs text-text-muted mb-3">Genera el video con IA (persona moviéndose y gesticulando según el guion). Requiere API de Replicate.</p>
+                      <Button onClick={handleRenderVideo} loading={store.isLoading} size="sm" className="w-full" icon={<Sparkles size={14} />}>
+                        {store.isLoading ? store.loadingMessage : 'Generar video real (15 créditos)'}
+                      </Button>
+                    </div>
+                    {videoRenderError && (
+                      <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+                        <p className="text-xs font-semibold text-yellow-400 mb-1">⚙️ Configuración requerida</p>
+                        <p className="text-xs text-yellow-300">{videoRenderError}</p>
+                        <a href="https://replicate.com/account/api-tokens" target="_blank" rel="noreferrer"
+                          className="inline-block mt-2 text-xs text-primary underline">
+                          Obtén tu API key gratis en Replicate →
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {videoError && (
                   <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
                     <p className="text-xs font-semibold text-red-400 mb-1">Error al generar</p>
@@ -698,6 +807,21 @@ export function Studio() {
                   <div className="flex flex-col items-center justify-center h-64 gap-3">
                     <Loader2 size={32} className="text-primary animate-spin" />
                     <p className="text-sm text-text-muted">{store.loadingMessage}</p>
+                    {store.loadingMessage.includes('video real') && (
+                      <p className="text-xs text-text-muted/60 text-center max-w-xs">
+                        La IA genera el video cuadro por cuadro. Este proceso toma 2-3 minutos.
+                      </p>
+                    )}
+                  </div>
+                ) : generatedVideoUrl ? (
+                  <div className="space-y-4">
+                    <video controls className="w-full rounded-2xl border border-border" src={generatedVideoUrl}>
+                      Tu navegador no soporta video.
+                    </video>
+                    <a href={generatedVideoUrl} download className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-surface border border-border rounded-xl text-sm text-text-muted hover:text-text-main hover:border-primary/30 transition-all">
+                      ⬇️ Descargar video
+                    </a>
+                    {store.videoScript && <VideoStoryboard script={store.videoScript} />}
                   </div>
                 ) : store.videoScript ? (
                   <VideoStoryboard script={store.videoScript} />
